@@ -181,7 +181,7 @@ def train():
             count = 0
 
 
-def evaluate(data_groups):
+def evaluate(data_groups, data):
     model.eval()
     total_loss = 0
     count = 0
@@ -190,7 +190,7 @@ def evaluate(data_groups):
     TP_FN = 0
     with torch.no_grad():
         for batch_indices in GroupBatchRandomSampler(data_groups, args.batch_size, drop_last=False):
-            sentences, tokens, targets, lengths = get_batch(batch_indices, train_data)
+            sentences, tokens, targets, lengths = get_batch(batch_indices, data)
             output = model(sentences, tokens)
             tp, tp_fp, tp_fn = measure(output, targets, lengths)
             TP += tp
@@ -270,7 +270,7 @@ if __name__ == "__main__":
         print("-" * 118)
         for epoch in range(1, args.epochs+1):
             train()
-            val_loss, precision, recall, f1 = evaluate(val_data_groups)
+            val_loss, precision, recall, f1 = evaluate(val_data_groups, val_data)
 
             elapsed = time.time() - start_time
             print("-" * 118)
@@ -303,7 +303,7 @@ if __name__ == "__main__":
         model = torch.load(f)
 
     # Run on test data
-    test_loss, precision, recall, f1 = evaluate(test_data_groups)
+    test_loss, precision, recall, f1 = evaluate(test_data_groups, test_data)
     print("=" * 118)
     print("| End of Training | Test Loss {:5.3f} | Precision {:5.3f} "
           "| Recall {:5.3f} | F1 {:5.3f} |".format(test_loss, precision, recall, f1))

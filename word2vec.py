@@ -27,7 +27,7 @@ if __name__ == "__main__":
         make_corpus()
 
     sentences = LineSentence('data/NYT_CoType/corpus.txt')
-    model = Word2Vec(sentences, sg=1, size=300, workers=4, iter=8, negative=8)
+    model = Word2Vec(sentences, sg=1, vector_size=300, workers=4, epochs=8, negative=8)
     word_vectors = model.wv
     word_vectors.save('data/NYT_CoType/word2vec')
     word_vectors.save_word2vec_format('data/NYT_CoType/word2vec.txt', fvocab='data/NYT_CoType/vocab.txt')
