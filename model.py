@@ -34,6 +34,22 @@ class CharEncoder(nn.Module):
         nn.init.kaiming_uniform_(self.embed.weight.data, mode='fan_in', nonlinearity='relu')
 
 
+class LSTMEncoder(nn.Module):
+    """
+    Input: (batch_size, seq_len), (batch_size, seq_len, char_features)
+    """
+    def __init__(self, weight, input_dim, hidden_dim, NUM_LAYERS, emb_dropout):
+        super(LSTMEncoder, self).__init__()
+        self.embed = nn.Embedding.from_pretrained(weight, freeze=False)
+        self.drop = nn.Dropout(emb_dropout)
+        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=NUM_LAYERS, batch_first=True, bidirectional=True)
+        # self.conv_net = ConvNet(channels, kernel_size, dropout, dilated=True, residual=False)
+
+    def forward(self, word_input):
+        embeddings = self.embed(word_input)
+        lstm_out, _ = self.lstm(self.drop(embeddings))
+        return torch.cat((embeddings, lstm_out), -1)
+
 class WordEncoder(nn.Module):
     """
     Input: (batch_size, seq_len), (batch_size, seq_len, char_features)
@@ -68,7 +84,7 @@ class Decoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.output_size=output_size
 
-        self.lstm = nn.LSTM(input_size, hidden_dim, num_layers = NUM_LAYERS)
+        self.lstm = nn.LSTM(input_size, hidden_dim, num_layers = NUM_LAYERS, batch_first=True)
         self.hidden2label = nn.Linear(hidden_dim, output_size)
         self.init_weight()
 
@@ -89,25 +105,28 @@ class Model(nn.Module):
     def __init__(self, charset_size, char_embedding_size, char_channels, char_padding_idx, char_kernel_size,
                  weight, word_embedding_size, word_channels, word_kernel_size, num_tag, dropout, emb_dropout):
         super(Model, self).__init__()
-        self.char_encoder = CharEncoder(charset_size, char_embedding_size, char_channels, char_kernel_size,
-                                        char_padding_idx, dropout=dropout, emb_dropout=emb_dropout)
-        self.word_encoder = WordEncoder(weight, word_channels, word_kernel_size,
-                                        dropout=dropout, emb_dropout=emb_dropout)
+        # self.char_encoder = CharEncoder(charset_size, char_embedding_size, char_channels, char_kernel_size,
+        #                                 char_padding_idx, dropout=dropout, emb_dropout=emb_dropout)
+        # self.word_encoder = WordEncoder(weight, word_channels, word_kernel_size,
+        #                                 dropout=dropout, emb_dropout=emb_dropout)
+        self.word_encoder = LSTMEncoder(weight, word_embedding_size, word_embedding_size, NUM_LAYERS=2, emb_dropout=emb_dropout)
         self.drop = nn.Dropout(dropout)
-        self.char_conv_size = char_channels[-1]
+        # self.char_conv_size = char_channels[-1]
         self.word_embedding_size = word_embedding_size
-        self.word_conv_size = word_channels[-1]
+        # self.word_conv_size = word_channels[-1]
         #self.decoder = nn.Linear(self.char_conv_size+self.word_embedding_size+self.word_conv_size, num_tag)
-        self.decoder = Decoder(self.char_conv_size+self.word_embedding_size+self.word_conv_size,
-                               self.char_conv_size + self.word_embedding_size + self.word_conv_size,
-                               num_tag,NUM_LAYERS=1)
-        self.init_weights()
+        # self.decoder = Decoder(self.char_conv_size+self.word_embedding_size+self.word_conv_size,
+        #                        self.char_conv_size + self.word_embedding_size + self.word_conv_size,
+        #                        num_tag,NUM_LAYERS=1)
+    
+        self.decoder = Decoder(word_embedding_size*3, word_embedding_size, num_tag,NUM_LAYERS=1)
+        # self.init_weights()
 
     def forward(self, word_input, char_input):
-        batch_size = word_input.size(0)
-        seq_len = word_input.size(1)
-        char_output = self.char_encoder(char_input.contiguous().view(-1, char_input.size(2))).view(batch_size, seq_len, -1)
-        word_output = self.word_encoder(word_input, char_output)
+        # batch_size = word_input.size(0)
+        # seq_len = word_input.size(1)
+        # char_output = self.char_encoder(char_input.contiguous().view(-1, char_input.size(2))).view(batch_size, seq_len, -1)
+        word_output = self.word_encoder(word_input)
         y = self.decoder(word_output)
 
         return F.log_softmax(y, dim=2)

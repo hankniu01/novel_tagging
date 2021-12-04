@@ -63,17 +63,18 @@ if torch.cuda.is_available():
 print(args)
 device = torch.device("cuda" if args.cuda else "cpu")
 
+basedir = os.path.dirname(os.path.abspath(__file__))
 
 charset = Charset()
 vocab = Vocabulary()
-vocab.load("data/NYT_CoType/vocab.txt")
+vocab.load(basedir + "/data/NYT_CoType/vocab.txt")
 tag_set = Index()
-tag_set.load("data/NYT_CoType/tag2id.txt")
+tag_set.load(basedir + "/data/NYT_CoType/tag2id.txt")
 relation_labels = Index()
-relation_labels.load('data/NYT_CoType/relation_labels.txt')
+relation_labels.load(basedir + '/data/NYT_CoType/relation_labels.txt')
 
-train_data = load('data/NYT_CoType/train.pk')
-test_data = load('data/NYT_CoType/test.pk')
+train_data = load(basedir + '/data/NYT_CoType/train.pk')
+test_data = load(basedir + '/data/NYT_CoType/test.pk')
 val_size = int(0.01 * len(train_data))
 train_data, val_data = random_split(train_data, [len(train_data)-val_size, val_size])
 
